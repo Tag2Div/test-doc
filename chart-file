@@ -1,0 +1,3751 @@
+Lis controll 
+I have manage every receipt multiple test and receipt wise  barcode , now how handel barcode and test has sample type urine , blood, serum and other , now which ayay for lis Handel receipt wise or sample wise
+
+
+In a Laboratory Information System (LIS), the correct architectural approach is:
+
+Primary control = Receipt (Order) level
+Operational control = Sample level
+Execution control = Test level
+
+You should never choose only receipt-wise OR sample-wise. A proper LIS is hierarchical.
+
+✅ Recommended LIS Design Model
+1️⃣ Receipt / Order Level (Patient Visit Level)
+This is your transaction root entity.
+
+Represents:
+
+One patient visit
+
+One billing transaction
+
+One collection event
+
+Contains:
+
+Receipt ID (main barcode optional)
+
+Patient info
+
+Billing info
+
+Ordered tests
+
+Example
+Receipt R-1001
+Tests:
+
+CBC
+
+Blood Sugar
+
+Urine R/E
+
+2️⃣ Sample Level (Critical for Lab Workflow)
+This is where real lab processing happens.
+
+Each sample must have its own barcode.
+
+Because:
+
+Test	Sample Type
+CBC	EDTA Blood
+Blood Sugar	Fluoride Blood
+Urine R/E	Urine
+So one receipt → multiple sample types → multiple sample barcodes
+
+🔥 Correct Flow
+Step 1: Create Receipt
+Receipt ID = R-1001
+
+Step 2: Group Tests by Sample Type
+From R-1001:
+
+CBC → EDTA Blood
+
+Blood Sugar → Fluoride Blood
+
+Urine R/E → Urine
+
+System groups:
+
+Sample S1 → EDTA Blood
+
+Sample S2 → Fluoride Blood
+
+Sample S3 → Urine
+
+Step 3: Generate Sample Barcodes
+Now barcode print:
+
+S1 → Barcode 1
+
+S2 → Barcode 2
+
+S3 → Barcode 3
+
+📌 Therefore
+✔ Barcode should be Sample-wise
+❌ Not Test-wise
+❌ Not Only Receipt-wise
+
+Why Not Receipt-wise Only?
+Because:
+
+Different tubes
+
+Different departments
+
+Different analyzers
+
+Different storage conditions
+
+One barcode cannot manage that properly.
+
+Why Not Test-wise?
+Because:
+
+Multiple tests run from same tube
+
+Wasteful to generate 10 barcodes for 10 blood tests
+
+Correct grouping = Sample container based
+
+🧠 Professional LIS Architecture
+Receipt
+   ├── Sample (by sample_type)
+   │       ├── Test
+   │       ├── Test
+   │
+   ├── Sample
+           ├── Test
+💡 Database Structure Suggestion (Laravel Friendly)
+receipts
+id
+
+patient_id
+
+receipt_no
+
+receipt_tests
+id
+
+receipt_id
+
+test_id
+
+samples
+id
+
+receipt_id
+
+sample_type
+
+barcode
+
+sample_tests
+id
+
+sample_id
+
+test_id
+
+🏥 Real Lab Industry Standard
+All major LIS systems use:
+
+✔ Order → Sample → Test model
+✔ Barcode at sample level
+✔ Status tracking at sample level
+
+🎯 Final Recommendation
+Manage receipt for billing and patient
+Handle barcode and workflow sample-wise
+Attach tests under sample
+
+If you want, I can design full production-ready LIS workflow logic including:
+
+Sample collection status
+
+Analyzer mapping
+
+Partial result release
+
+Tube recollection handling
+
+Tell me your current DB structure and I will optimize it.
+
+
+Ok I have already test consumption so test consumption EDTA code 01 so barcode label used receipt code + EDTA code so sample manage it. Is it profetionaly is correct
+
+Yes — your idea is conceptually correct, but it needs refinement to be professionally robust.
+
+You said:
+
+Test consumption defines EDTA = code 01
+Barcode = receipt_code + EDTA_code
+
+Example:
+R1001-01
+
+That is logically sound, but let's analyze it properly from an LIS architecture standpoint.
+
+✅ What You Are Doing
+You are:
+
+Grouping tests by sample consumption (good ✅)
+
+Assigning sample type code (EDTA = 01) (good ✅)
+
+Generating barcode as:
+
+receipt_no + sample_type_code
+This means:
+
+Receipt R1001
+EDTA sample → R1001-01
+Urine sample → R1001-02
+
+This effectively creates sample-level barcode, not test-level.
+That part is correct.
+
+⚠️ Where It Can Become Weak
+1️⃣ Problem: Multiple Same Sample Type
+If same receipt has:
+
+2 EDTA tubes required
+
+One for Hematology
+
+One for special test (separate tube needed)
+
+Both will be:
+
+R1001-01
+Collision problem.
+
+2️⃣ Problem: Recollection Case
+If sample rejected and recollected:
+
+You cannot reuse same barcode
+
+You need versioning or new unique ID
+
+🎯 Professional LIS Standard
+Industry practice:
+
+Barcode should be:
+
+ReceiptID + SampleSequence
+NOT only sample type code.
+
+Example:
+
+Receipt: R1001
+
+Samples:
+
+Sample ID	Type	Barcode
+S1	EDTA	R1001-01
+S2	Urine	R1001-02
+S3	Serum	R1001-03
+Here:
+
+01, 02, 03 = sequence per receipt
+
+Sample type stored in DB
+
+Barcode stays unique
+
+💡 Best Professional Model (Recommended)
+Database Structure
+samples
+id (auto increment)
+
+receipt_id
+
+sample_type_id
+
+tube_count
+
+sequence_no
+
+barcode (unique)
+
+status
+
+recollection_of (nullable)
+
+Barcode Strategy (Professional)
+Option A (Good for Small/Medium Lab):
+
+receipt_no + "-" + sequence_no
+Example:
+
+R1001-01
+R1001-02
+Option B (Enterprise Grade):
+
+YYMMDD + receipt_id + sequence
+Example:
+
+260213100101
+Unique, scanner friendly, no logic leakage.
+
+🔥 Important Professional Principle
+Barcode should be:
+
+✔ Unique
+✔ Independent
+✔ Not business-logic dependent
+✔ Not editable
+✔ Stored in DB as primary reference
+
+Sample type should NOT be encoded into barcode if avoidable.
+
+Barcode is identity — not meaning.
+
+🏥 Final Evaluation of Your Approach
+Criteria	Your System
+Sample-wise grouping	✅ Correct
+Test-wise barcode	❌ No (Good)
+Receipt-wise only	❌ No (Good)
+Uniqueness guarantee	⚠️ Weak if multiple same type
+Recollection safe	❌ Not fully
+🎯 Final Verdict
+Your logic is 70% correct.
+
+To make it professionally correct:
+
+Add sample sequence per receipt
+
+Keep barcode unique
+
+Store sample type separately
+
+Handle recollection
+
+If you want, tell me:
+
+Are you running small diagnostic center or high volume lab?
+
+How many samples per day?
+
+I’ll design optimal barcode algorithm for your scale.
+
+
+Tenant 4 digit + yymmdd + receipt 8 digit + sample 2 digit is it barcode reader fine
+
+Yes — structurally your format is professionally acceptable, but we must validate it technically for barcode scanner compatibility and operational safety.
+
+🔎 Your Proposed Format
+Tenant (4) + YYMMDD (6) + Receipt (8) + Sample (2)
+Total length:
+
+4 + 6 + 8 + 2 = 20 digits
+Example:
+
+1001 260213 00001234 01
+→ 10012602130000123401
+✅ 1️⃣ Is 20-digit numeric barcode readable?
+Yes — modern barcode scanners handle 20 digits easily, IF:
+
+You use Code 128
+
+Or Code 39
+
+Or EAN-128 (GS1-128)
+
+Most hospital LIS use:
+
+✔ Code 128 (recommended)
+
+It supports:
+
+Up to 48+ characters
+
+Numeric optimized mode
+
+High density
+
+Small label friendly
+
+20 digits is completely safe.
+
+✅ 2️⃣ Is It Professionally Designed?
+Let’s analyze:
+
+Component	Purpose	Good?
+Tenant	Multi-tenant separation	✅
+Date	Traceability	✅
+Receipt	Order linkage	✅
+Sample	Sample separation	✅
+Architecturally sound.
+
+⚠️ But Here Is the Important Professional Advice
+🚨 Barcode should NOT depend on business meaning
+Enterprise LIS best practice:
+
+Barcode = Unique Identifier
+Metadata = Stored in database
+
+Your design embeds:
+
+Tenant
+
+Date
+
+Receipt
+
+Sample
+
+This is acceptable for mid-scale labs.
+But enterprise systems often use:
+
+Auto Increment Sample ID
+and store everything relationally.
+
+Why?
+
+Because:
+
+If receipt format changes → barcode format breaks
+
+If tenant changes → barcode logic changes
+
+If numbering resets yearly → risk
+
+🏥 Real-World Practice
+Small/Medium Diagnostic Center
+Your format is perfectly fine.
+
+High Volume Lab (1000+ samples/day)
+Better approach:
+
+Auto Increment Global Sample ID
+Example:
+
+000000567891234
+Simple. Fast. Immutable.
+
+📦 Scanner Compatibility
+Ensure:
+
+Barcode Type = Code 128
+
+No spaces
+
+Printed clearly (minimum 300 DPI)
+
+Label width ≥ 3 cm
+
+Most USB scanners:
+
+Zebra
+
+Honeywell
+
+Datalogic
+
+Will read 20-digit numeric without issue.
+
+🔐 Final Technical Evaluation
+✔ Length OK
+✔ Numeric only (good for scanning)
+✔ Unique if enforced in DB
+✔ Scalable
+
+🎯 Professional Recommendation
+Your format is acceptable IF:
+
+Barcode column is UNIQUE in DB
+
+No manual editing allowed
+
+Recollection creates new sample sequence (not overwrite)
+
+You use Code 128
+
+🔥 Slight Improvement Suggestion
+Instead of:
+
+Tenant + Date + Receipt + Sample
+You could simplify:
+
+Tenant + Receipt + Sample
+Date is already derivable from receipt.
+
+Reduces length → faster scan → smaller label.
+
+✅ Final Verdict
+Your barcode design is:
+
+✔ Professionally acceptable
+✔ Scanner compatible
+✔ Suitable for multi-tenant LIS
+
+If you want, I can now design:
+
+Collision-safe barcode generator logic (Laravel ready)
+
+Recollection handling strategy
+
+Analyzer mapping workflow
+
+Tell me your daily sample volume.
+
+
+Auto Increment Global Sample ID
+
+But receipt and human readable label so easily correct serial now by lab assistant also
+
+This is an excellent operational concern — and you're thinking correctly from a workflow perspective.
+
+You are balancing:
+
+🔐 System integrity (Auto Increment Global Sample ID)
+
+👩‍🔬 Human usability (Lab assistant needs readable serial)
+
+These two should NOT be the same field.
+
+🎯 Professional Solution: Separate Identity From Display
+You should maintain two identifiers:
+
+Type	Purpose	Visible?
+Global Sample ID	System identity (immutable)	❌ Hidden
+Human Sample Serial	Lab workflow reference	✅ Printed
+✅ Recommended Architecture
+1️⃣ Database
+samples table
+id (BIGINT auto increment) → 🔐 system ID
+
+receipt_id
+
+sample_sequence (01, 02, 03)
+
+sample_type
+
+barcode (based on id)
+
+display_code (human readable)
+
+status
+
+2️⃣ Barcode Strategy (Professional)
+Barcode = based on samples.id
+
+Example:
+
+000000012345
+Short. Clean. Unique. Fast.
+
+Printed as Code 128.
+
+3️⃣ Human Readable Label
+On the sticker, print:
+
+Receipt: R1001
+Sample: 01
+Type: EDTA
+Barcode: 000000012345
+Now lab assistant sees:
+
+Receipt number
+
+Sample sequence
+
+Sample type
+
+They never need to read barcode digits manually.
+
+🔥 Why This Is Industry Standard
+Major LIS systems:
+
+🔐 Use surrogate numeric ID internally
+
+👀 Display contextual readable info for humans
+
+📦 Barcode is just a scanner key
+
+Barcode is NOT meant for humans to interpret.
+
+🧠 What Happens If You Embed Everything in Barcode?
+Problems:
+
+Longer barcode
+
+Harder scanning
+
+Harder reprint logic
+
+Future format changes break compatibility
+
+Harder analyzer integration
+
+🏥 Real Lab Workflow
+Technician does NOT type barcode number.
+
+They:
+
+Scan barcode
+
+LIS loads sample
+
+They confirm via:
+
+Patient name
+
+Receipt
+
+Sample type
+
+Human-readable info is visual — not encoded logic.
+
+⚖️ Final Recommendation For You
+Since you're building a multi-tenant LIS:
+
+✔ Use:
+Auto Increment Global Sample ID → barcode
+
+✔ Print:
+Tenant name
+Receipt number
+Sample sequence
+Sample type
+
+❌ Do NOT:
+Rely on receipt+date+tenant inside barcode for meaning
+
+🎯 Clean Example
+DB:
+id = 125478
+
+Barcode:
+000125478
+Label:
+Tenant: 1001
+Receipt: R00012345
+Sample: 02
+Type: Serum
+Perfectly professional.
+
+🚀 Advanced Option (Hybrid)
+If you insist on some grouping feeling:
+
+Barcode:
+
+T1-000125478
+Still based on unique ID — not business logic.
+
+🧾 Final Verdict
+You are right to think about human readability.
+
+But:
+
+Barcode = Machine identity
+Label text = Human identity
+
+Separate them.
+
+If you tell me:
+
+How many samples per day?
+
+Do you plan analyzer integration later?
+
+I can design the most scalable architecture for your LIS.
+
+
+Currently I have manage a level 1. Sample type , 2 test used this sample, barcode number show in label and scan code same
+
+Good — that means your current structure is:
+
+Level 1 → Sample Type
+Level 2 → Tests under that sample
+Barcode printed on label = same barcode used for scanning
+
+That is structurally correct for a functional LIS.
+
+Now let’s evaluate it professionally.
+
+✅ What You Are Doing (Workflow Model)
+Receipt
+   └── Sample (by sample_type)
+            └── Tests
+Barcode attached at Sample level
+Scanner reads → loads Sample → shows tests under it.
+
+✔ This is correct architecture.
+✔ This matches real lab workflow.
+
+🎯 The Important Question
+Is your barcode:
+
+Unique per sample?
+
+Stored in samples table?
+
+Never reused?
+
+If yes → your system is already professionally structured.
+
+🏥 Industry Comparison
+Most diagnostic LIS systems:
+
+Do NOT generate barcode per test
+
+Do NOT generate barcode per receipt only
+
+Generate barcode per physical tube/sample
+
+You are already doing that.
+
+That is correct.
+
+🔍 What You Must Ensure Now
+Even if structure is correct, verify these critical controls:
+
+1️⃣ Unique Constraint
+samples.barcode must be UNIQUE in DB.
+
+2️⃣ Recollection Handling
+If sample rejected:
+
+Create NEW sample row
+
+Generate NEW barcode
+
+Link to old sample via recollection_of
+
+Never overwrite old barcode.
+
+3️⃣ Status Tracking
+Each sample should have status:
+
+pending
+
+collected
+
+processing
+
+completed
+
+rejected
+
+This is very important for scaling.
+
+⚖️ Is It Enough For Now?
+If you are:
+
+Small to medium lab
+
+No analyzer integration yet
+
+Manual validation workflow
+
+Then your current 2-level model is sufficient.
+
+🚀 When You Need Upgrade
+You will need Level 3 (Analyzer mapping) when:
+
+You integrate hematology analyzer
+
+Biochemistry analyzer
+
+Automated result import
+
+Then structure becomes:
+
+Receipt
+   └── Sample
+           └── Test
+                  └── Analyzer / Machine mapping
+But that is future phase.
+
+🎯 Final Professional Assessment
+Your current structure:
+
+✔ Correct logical hierarchy
+✔ Correct barcode placement
+✔ Professional sample grouping
+
+You are on the right architectural path.
+
+If you want, next I can help you design:
+
+Full scalable LIS schema (enterprise-ready)
+
+Analyzer integration model
+
+Multi-tenant isolation strategy
+
+Performance optimization for 50k+ samples
+
+Tell me your daily sample volume and future expansion plan.
+
+
+But need profetional
+
+Good. Then let’s define what “professional LIS” actually means in architectural terms — not just “working”.
+
+A professional LIS must satisfy:
+
+✅ Unique sample identity
+
+✅ Traceability (audit trail)
+
+✅ Recollection handling
+
+✅ Multi-tenant isolation
+
+✅ Analyzer integration ready
+
+✅ Workflow status control
+
+✅ Non-breaking future scalability
+
+If your current system is only:
+
+Sample Type → Tests → Barcode
+
+That is functional, but not fully professional yet.
+
+🎯 Professional LIS Architecture (Minimum Standard)
+1️⃣ Core Hierarchy
+Tenant
+   └── Receipt (Order)
+           └── Sample (Physical tube)
+                   └── Test
+                           └── Result
+Each level must be independently identifiable.
+
+2️⃣ Sample Table (Professional Design)
+Your samples table should include:
+
+id (BIGINT auto increment) 🔐
+
+tenant_id
+
+receipt_id
+
+sample_type_id
+
+sequence_no (01, 02)
+
+barcode (UNIQUE)
+
+status
+
+collected_at
+
+received_at
+
+rejected_at
+
+recollection_of (nullable)
+
+created_by
+
+This is what makes it professional.
+
+3️⃣ Barcode Rule (Professional Standard)
+✔ Barcode = immutable
+✔ Barcode = unique
+✔ Barcode never reused
+✔ Recollection = new barcode
+
+Do NOT encode business meaning inside barcode.
+
+Use:
+
+Auto Increment Global Sample ID
+Print human-readable info separately.
+
+4️⃣ Sample Status Workflow (Critical)
+Professional labs control sample lifecycle:
+
+Status	Meaning
+pending	Created but not collected
+collected	Tube collected
+received	Lab received
+processing	Running
+completed	All tests done
+rejected	Rejected sample
+Without this, system is not professional.
+
+5️⃣ Recollection Handling (Important)
+If EDTA sample clotted:
+
+You must:
+
+Mark old sample = rejected
+
+Create new sample row
+
+Generate new barcode
+
+Link recollection_of = old_sample_id
+
+Never overwrite.
+
+6️⃣ Multi-Tenant Isolation
+Since you're building multi-tenant:
+
+All tables must contain tenant_id
+
+Index (tenant_id, barcode)
+
+Prevent cross-tenant scan collision
+
+7️⃣ Analyzer Ready Structure
+Even if you don’t integrate now:
+
+Your tests table should support:
+
+analyzer_id
+
+method
+
+machine_code
+
+result_unit
+
+reference_range
+
+Future-proofing = professional.
+
+⚖️ Where You Currently Stand
+Based on what you described:
+
+✔ Sample-level barcode
+✔ Tests grouped under sample
+
+But missing (likely):
+
+Lifecycle tracking
+
+Recollection linking
+
+Global immutable ID
+
+Strict unique constraint
+
+Full audit trail
+
+That’s the difference between:
+
+🧪 Small diagnostic software
+vs
+🏥 Professional LIS
+
+🎯 Final Recommendation
+To be truly professional:
+
+Keep barcode at sample level
+
+Use global auto increment ID
+
+Print readable info separately
+
+Implement sample lifecycle status
+
+Implement recollection logic
+
+Add audit trail
+
+If you want, send me:
+
+Your current samples table structure
+
+Your barcode generation logic
+
+I will refine it to enterprise-grade architecture.
+
+
+Need very easy  for manage sample workflow for lis machine request for test and also for data to result manage
+
+Understood. You want:
+
+✔ Very simple workflow
+
+✔ Easy for lab staff
+
+✔ Ready for LIS machine request
+
+✔ Easy result management
+
+✔ Still professional
+
+Let’s design a clean, minimal, professional LIS workflow — no unnecessary complexity.
+
+🎯 SIMPLE & PROFESSIONAL LIS STRUCTURE
+1️⃣ Core Model (Keep Only 4 Main Tables)
+Receipt → Sample → Test → Result
+That’s it. No overengineering.
+
+🧱 DATABASE STRUCTURE (Easy + Scalable)
+receipts
+id
+
+tenant_id
+
+receipt_no
+
+patient_id
+
+created_at
+
+samples (Main Control Level)
+id (BIGINT auto increment) ✅
+
+receipt_id
+
+sample_type (EDTA, Serum, Urine)
+
+sequence_no (01, 02)
+
+barcode (UNIQUE)
+
+status (pending / processing / done)
+
+collected_at
+
+👉 Barcode = based on id only
+👉 Print receipt_no + sample_type on label for humans
+
+tests
+id
+
+sample_id
+
+test_id
+
+machine_code (important for analyzer)
+
+status (pending / sent / completed)
+
+result_value (nullable)
+
+verified_by (nullable)
+
+results (optional separate table)
+If you want clean separation:
+
+id
+
+test_id
+
+value
+
+unit
+
+reference_range
+
+flag (H/L/N)
+
+🔄 SIMPLE SAMPLE WORKFLOW
+Step 1: Create Receipt
+Patient registered.
+
+Step 2: Group Tests by Sample Type
+System automatically creates:
+
+1 EDTA sample
+
+1 Serum sample
+
+1 Urine sample
+
+Each gets unique barcode.
+
+Step 3: Collection
+Staff scans barcode → mark as collected.
+
+Step 4: Send To Machine
+When sending to analyzer:
+
+System selects tests:
+
+WHERE sample_id = X
+AND status = 'pending'
+Export format:
+
+barcode | machine_code
+Machine reads barcode → runs tests.
+
+Step 5: Import Results
+Machine sends back:
+
+barcode | machine_code | value
+System finds:
+
+sample by barcode
+→ test by machine_code
+→ update result
+Mark test = completed.
+
+Step 6: When All Tests Done
+System auto-updates:
+
+If all tests completed → sample.status = done
+Receipt ready for report.
+
+🔥 WHY THIS IS PROFESSIONAL
+✔ Barcode at sample level
+✔ Tests linked to sample
+✔ Machine uses barcode + machine_code
+✔ No business logic inside barcode
+✔ Very simple
+✔ Analyzer ready
+✔ Multi-tenant safe
+
+🧠 VERY IMPORTANT RULE
+Machine communication should use:
+
+barcode + machine_test_code
+Never use receipt number.
+
+Analyzer doesn’t understand receipt — it understands tube.
+
+🎯 Final Clean Workflow Diagram
+Receipt (Billing)
+     ↓
+Sample (Physical Tube + Barcode)
+     ↓
+Tests (Machine Code Mapping)
+     ↓
+Results (Auto Import)
+This is:
+
+Simple
+
+Fast
+
+Professional
+
+Analyzer compatible
+
+Easy to manage
+
+If you want, I can now:
+
+Design Laravel migration structure
+
+Design machine request JSON format
+
+Design result import logic
+
+Or optimize for high-volume lab
+
+Tell me:
+Daily samples volume?
+Manual or analyzer integrated?
+
+
+SIMPLE SAMPLE WORKFLOW
+
+It need auto generate or menialy collection generate it, if re sample it how Handel sample when 1 sample multiple test and multiple machine for lis , supposed blood sample 5 test , 2 test rbs ,scre creatinine in one machine anther 3 sample one or more machine work order, how Handel simplay without complexity 
+
+Excellent. Now we design a very simple but professional workflow for:
+
+1 sample
+
+Multiple tests
+
+Multiple machines
+
+Re-sample handling
+
+Minimal complexity
+
+No overengineering.
+
+🎯 FIRST DECISION: When Should Sample Be Generated?
+✅ Professional & Simple Answer:
+👉 Auto-generate sample when receipt is created
+NOT manually during collection.
+
+Why?
+
+Prevent staff forgetting sample creation
+
+Prevent duplicate samples
+
+System controls grouping
+
+Cleaner workflow
+
+So:
+
+When receipt saved →
+System automatically groups tests by sample_type →
+Creates required samples →
+Generates barcode.
+
+Collection only updates status.
+
+🧱 SIMPLE PROFESSIONAL STRUCTURE
+Receipt
+   └── Sample (tube)
+            └── Test
+No extra layers needed.
+
+🧪 Your Scenario
+Blood sample
+5 tests:
+
+RBS → Machine A
+
+Creatinine → Machine A
+
+CBC → Machine B
+
+ESR → Machine C
+
+CRP → Machine C
+
+Still:
+
+👉 Only ONE sample (if same tube type)
+
+🔥 HOW TO HANDLE MULTIPLE MACHINES (Simple Way)
+Step 1: Sample Created
+Sample:
+
+id = 5001
+
+barcode = 0005001
+
+type = Serum
+
+Step 2: Tests Linked
+tests table:
+
+id	sample_id	machine_id	machine_code	status
+1	5001	A	RBS	pending
+2	5001	A	CREA	pending
+3	5001	B	CBC	pending
+4	5001	C	ESR	pending
+5	5001	C	CRP	pending
+🖥 Sending Work To Machines (Simple Logic)
+When sending to Machine A:
+
+SELECT tests
+WHERE sample_id = 5001
+AND machine_id = A
+AND status = 'pending'
+Send:
+
+barcode + machine_code
+Example:
+
+0005001 | RBS
+0005001 | CREA
+Machine B and C same logic.
+
+📥 Result Import (Simple)
+Machine returns:
+
+barcode | machine_code | result
+System:
+
+Find sample by barcode
+
+Find test by machine_code
+
+Update result
+
+Mark test = completed
+
+🎯 When Is Sample Done?
+Simple rule:
+
+If all tests.status = completed
+→ sample.status = done
+No complexity needed.
+
+🔁 RE-SAMPLE HANDLING (Very Simple & Professional)
+If blood sample clotted:
+
+Mark old sample = rejected
+
+Create NEW sample
+
+Generate NEW barcode
+
+Copy incomplete tests to new sample
+
+Add field in samples table:
+
+recollection_of (nullable)
+So:
+
+id	barcode	recollection_of
+5001	0005001	null
+5010	0005010	5001
+Clean. Professional. No overwrite.
+
+🧠 IMPORTANT RULE
+Even if 5 tests go to 3 machines:
+
+✔ Keep only ONE sample if same tube
+✔ Split at test level by machine
+✔ Never split sample by machine
+
+Machine ≠ Sample
+Machine is execution layer only.
+
+🚀 SIMPLE STATUS MODEL (Enough)
+For samples:
+
+pending
+
+collected
+
+processing
+
+done
+
+rejected
+
+For tests:
+
+pending
+
+sent
+
+completed
+
+That’s enough.
+
+🏥 Final Clean Workflow
+Create Receipt
+      ↓
+Auto Generate Sample(s)
+      ↓
+Collection (scan barcode)
+      ↓
+Send Tests to Machines (by machine_id)
+      ↓
+Import Results
+      ↓
+Auto Complete Sample
+      ↓
+Release Report
+Very simple.
+Very professional.
+Analyzer ready.
+No unnecessary layers.
+
+🎯 Final Answer to Your Main Concern
+Should sample be manual or auto?
+
+✔ Auto-generate at receipt creation
+✔ Manual only for recollection
+
+Multiple machine handling?
+
+✔ Split at test level
+✔ Keep sample single
+
+If you want, I can now give:
+
+Exact Laravel table schema
+
+Exact query logic
+
+Machine export/import JSON format
+
+Or high-volume performance optimization
+
+Tell me your daily sample count.
+
+
+Supposed blood fbs,rbs or 2h glukoge how mange auto
+
+Good question. FBS, RBS, 2H Glucose is where many LIS systems become messy if not designed properly.
+
+Let’s handle it professionally but very simply.
+
+🧪 Scenario
+Tests:
+
+FBS (Fasting Blood Sugar)
+
+RBS (Random Blood Sugar)
+
+2H Glucose (Postprandial 2 hours)
+
+All are blood tests, but:
+
+FBS → collected fasting
+
+2H → collected 2 hours later
+
+RBS → collected anytime
+
+👉 These are different collection events, even if same test method.
+
+🎯 IMPORTANT RULE
+Sample is NOT grouped only by sample type (Blood).
+
+Sample must consider:
+
+sample_type + collection_time_group
+
+✅ SIMPLE PROFESSIONAL SOLUTION
+Add one extra column in tests table:
+
+collection_group
+Example:
+
+Test	Sample Type	Collection Group
+FBS	Blood	fasting
+RBS	Blood	random
+2H Glucose	Blood	post_2h
+🔄 Auto Sample Generation Logic
+When receipt created:
+
+System groups by:
+
+sample_type + collection_group
+So:
+
+If patient ordered:
+
+FBS
+
+2H Glucose
+
+System creates:
+
+Sample	Type	Group
+S1	Blood	fasting
+S2	Blood	post_2h
+Two different samples.
+
+Correct. Professional.
+
+📦 Database Example
+samples
+id
+
+receipt_id
+
+sample_type
+
+collection_group
+
+barcode
+
+status
+
+tests
+id
+
+sample_id
+
+test_id
+
+machine_id
+
+machine_code
+
+status
+
+🕒 Real Workflow Example
+Patient comes 8 AM fasting.
+
+Receipt includes:
+
+FBS
+
+2H Glucose
+
+System auto creates:
+
+S1 → Blood + fasting
+S2 → Blood + post_2h
+
+Only S1 collected immediately.
+
+S2 status remains:
+
+pending_collection
+After 2 hours → collect S2.
+
+🔥 Why This Is Correct
+Because:
+
+FBS and 2H are NOT from same tube.
+
+Even if both blood, they are different physiological states.
+
+🚀 Even Simpler Rule
+Define in tests table:
+
+sample_type
+collection_timing
+Where collection_timing:
+
+immediate
+
+fasting
+
+post_2h
+
+post_1h
+
+random
+
+Auto-group by both.
+
+Done.
+
+🧠 Professional Principle
+Sample grouping must consider:
+
+1️⃣ Physical tube type
+2️⃣ Collection timing
+
+Not just tube type.
+
+🎯 Final Simple Algorithm
+When receipt created:
+
+Group tests by:
+(sample_type, collection_timing)
+For each group:
+
+Create one sample
+
+Generate one barcode
+
+Attach related tests
+
+Very clean.
+Very scalable.
+Very professional.
+
+If you want next, I can design:
+
+OGTT (multiple timed glucose handling)
+
+Serial hormone testing
+
+Emergency STAT sample logic
+
+Or time-scheduled auto reminder system
+
+Tell me which level you want to build.
+
+
+FBS
+2H Glucose
+Sc creatine and extra 2 test same machine 
+
+Excellent — now we design this cleanly and simply.
+
+You have:
+
+FBS
+
+2H Glucose
+
+S. Creatinine
+
+2 more tests (same machine as creatinine)
+
+Assume:
+
+FBS → fasting blood
+
+2H → 2-hour post glucose
+
+Creatinine + 2 tests → normal serum chemistry
+
+🎯 Step 1: Define Test Metadata Properly
+Each test must have:
+
+Field	Example
+sample_type	Blood
+tube_type	Serum / Fluoride
+collection_group	fasting / post_2h / routine
+machine_id	Machine A
+Example configuration:
+
+Test	Tube	Collection Group	Machine
+FBS	Fluoride	fasting	Machine A
+2H	Fluoride	post_2h	Machine A
+Creatinine	Serum	routine	Machine A
+Test4	Serum	routine	Machine A
+Test5	Serum	routine	Machine A
+🎯 Step 2: Auto Grouping Logic
+System groups by:
+
+tube_type + collection_group
+NOT by machine.
+
+📦 What System Will Create
+Sample 1
+Tube: Fluoride
+Group: fasting
+Contains: FBS
+
+Sample 2
+Tube: Fluoride
+Group: post_2h
+Contains: 2H Glucose
+
+Sample 3
+Tube: Serum
+Group: routine
+Contains:
+
+Creatinine
+
+Test4
+
+Test5
+
+✅ Final Result: 3 Samples
+Even though same machine runs all tests:
+
+You must separate by collection timing.
+
+Machine does NOT define sample.
+Collection event defines sample.
+
+🖥 Machine Work Handling (Still Simple)
+When sending to Machine A:
+
+For Sample 1
+Send:
+
+barcode1 + FBS
+For Sample 2
+Send:
+
+barcode2 + 2H
+For Sample 3
+Send:
+
+barcode3 + CREA
+barcode3 + T4
+barcode3 + T5
+Machine sees same barcode for 3 tests → correct.
+
+🔄 Timeline Example
+8:00 AM → Collect fasting sample (Sample 1)
+Give glucose
+10:00 AM → Collect post 2h sample (Sample 2)
+Serum routine can be collected anytime (Sample 3)
+
+🧠 Simple Rule to Remember
+Create new sample when:
+
+Tube type differs
+OR
+
+Collection time differs
+
+Ignore machine in grouping.
+
+🚀 Simple Implementation Logic (Pseudo Code)
+group tests by (tube_type, collection_group)
+
+foreach group:
+    create sample
+    attach tests
+Done.
+
+No complexity.
+
+🎯 Why This Is Professional
+✔ Correct medical logic
+✔ Correct workflow
+✔ Analyzer compatible
+✔ Easy to manage
+✔ Easy to scale
+
+If you want next, I can show:
+
+How to handle OGTT 0h, 1h, 2h, 3h
+
+How to schedule timed collection automatically
+
+Or how to manage partial sample collection
+
+Tell me which direction you want.
+
+
+Same type tube two tube only
+
+Good — this is a very practical lab situation.
+
+You mean:
+
+Same tube type (e.g., Serum)
+
+But physically need 2 tubes
+
+Because volume not enough or protocol requires separation
+
+Now we solve this simply and professionally.
+
+🎯 Core Rule
+Sample ≠ Tube type
+Sample = Physical tube
+
+If you need 2 physical tubes →
+You must create 2 sample records
+Even if same type.
+
+🧪 Example Scenario
+Tests:
+
+Creatinine
+
+ALT
+
+AST
+
+Lipid Profile
+
+Uric Acid
+
+All:
+
+Tube type = Serum
+
+Collection group = routine
+
+Same machine
+
+But volume required is high → need 2 serum tubes.
+
+✅ Professional Simple Solution
+Add one field in test metadata:
+
+required_volume (ml)
+And in tube metadata:
+
+max_volume (ml)
+🔄 Auto Tube Split Logic (Simple)
+When grouping by:
+
+tube_type + collection_group
+Then:
+
+Calculate total required volume
+
+If exceeds one tube capacity
+
+Split into 2 samples (same tube type)
+
+📦 What System Creates
+Instead of:
+
+Sample 1 → Serum
+
+System creates:
+
+Sample	Tube	Sequence
+S1	Serum	01
+S2	Serum	02
+Both have different barcode.
+
+🖥 Test Distribution (Simple Way)
+You have two options:
+
+Option A (Simplest)
+Attach all tests to Sample 1 logically
+But physically collect 2 tubes
+Barcode only 1
+
+👉 This is acceptable for small lab
+👉 Less complexity
+
+Option B (More Accurate – Recommended)
+Split tests between tubes:
+
+Example:
+
+Sample 1:
+
+Creatinine
+
+ALT
+
+AST
+
+Sample 2:
+
+Lipid
+
+Uric Acid
+
+Each sample has its own barcode.
+
+More traceable. More professional.
+
+🎯 Best Simple Professional Model
+Add in samples table:
+
+tube_no (01, 02)
+
+parent_group_key (optional)
+
+Grouping logic:
+
+group tests by (tube_type, collection_group)
+then split by volume limit
+🔥 Very Important
+Even if:
+
+Same tube type
+
+Same machine
+
+If physically 2 tubes →
+System must create 2 sample records.
+
+Because barcode tracks physical object.
+
+🧠 Simple Final Rule
+Create new sample when:
+
+Tube type differs
+
+Collection timing differs
+
+Volume exceeds tube capacity
+
+That’s enough. No more rules needed.
+
+🏥 Final Clean Structure
+Receipt
+   └── Sample (tube 1)
+            └── Tests
+   └── Sample (tube 2)
+            └── Tests
+Barcode always at sample level.
+
+If you want, I can now:
+
+Design minimal auto volume-split algorithm
+
+Or give ultra-simple logic for small lab (no volume math)
+
+Or enterprise-grade sample batching logic
+
+Tell me which level you want.
+
+
+Best Simple Professional Model
+Add in samples table:
+tube_no (01, 02) but how auto detect it not same when it need same tube
+
+Excellent — this is the correct technical question.
+
+You want:
+
+If same tube type → normally 1 tube
+If volume exceeds → auto create 2 tubes
+But system must detect automatically
+
+We solve this simply and professionally, without complex medical engine.
+
+🎯 The Correct Professional Logic
+System must decide tube count using:
+
+Total Required Volume  vs  Tube Capacity
+Nothing more complicated.
+
+🧱 Step 1: Define Tube Capacity
+Create table:
+
+tube_types
+id	name	max_volume_ml
+1	Serum	5
+2	EDTA	3
+3	Fluoride	2
+Example:
+Serum tube capacity = 5 ml
+
+🧪 Step 2: Define Test Required Volume
+In tests table:
+
+test	required_volume_ml
+Creatinine	0.5
+ALT	0.5
+AST	0.5
+Lipid	2
+Uric Acid	0.5
+🔄 Step 3: Auto Calculation (Very Simple)
+When grouping tests by:
+
+tube_type + collection_group
+Then:
+
+total_volume = sum(required_volume_ml)
+tube_capacity = tube.max_volume_ml
+
+tube_count = ceil(total_volume / tube_capacity)
+📦 Example Calculation
+Total required volume:
+
+0.5 + 0.5 + 0.5 + 2 + 0.5 = 4 ml
+Tube capacity = 5 ml
+
+Result:
+
+ceil(4 / 5) = 1 tube
+System creates:
+
+Sample 01 only.
+
+🚨 Example When 2 Tubes Needed
+If total volume = 7 ml
+
+ceil(7 / 5) = 2 tubes
+System auto creates:
+
+Sample 01
+Sample 02
+
+Both Serum.
+
+🎯 Your samples Table
+Add:
+
+tube_no (01, 02)
+
+group_key (optional)
+
+barcode
+
+sample_type
+
+collection_group
+
+🧠 Simple Implementation Logic
+Pseudo code:
+
+group tests by (tube_type, collection_group)
+
+for each group:
+    total_volume = sum(test.required_volume)
+    tube_capacity = tube.max_volume
+
+    tube_count = ceil(total_volume / tube_capacity)
+
+    for i in 1 to tube_count:
+        create sample with tube_no = i
+Done.
+
+No AI. No complexity.
+
+❗ Important Note
+You do NOT need to perfectly distribute tests between tubes unless you want high precision.
+
+For small lab:
+
+✔ Just create 2 tubes
+✔ Attach all tests to first tube logically
+✔ Use second tube as backup volume
+
+That is acceptable and widely used.
+
+🎯 Professional Balance
+If you want:
+
+Ultra Simple (Small Lab)
+Use fixed rule: max 5 tests per tube
+
+No volume math
+
+Professional Medium Lab
+Use volume-based auto calculation (recommended)
+
+🏥 Final Clean Rule
+Create additional tube automatically when:
+
+sum(required_volume) > tube_capacity
+Otherwise → single tube.
+
+Very simple.
+Very scalable.
+Medically logical.
+Machine-ready.
+
+If you want next, I can design:
+
+Laravel-ready grouping service
+
+Migration structure
+
+Or optimized SQL approach for large volume lab
+
+Tell me your expected daily test count.
+
+
+I call supposed fbs,rbs how it identify two tube need
+
+Excellent — now we clarify something very important.
+
+If you call:
+
+FBS
+
+RBS
+
+System should NOT create 2 tubes just because there are 2 tests.
+
+The system must check:
+
+1️⃣ Tube type
+2️⃣ Collection timing
+3️⃣ Volume requirement
+
+🎯 First: Medical Reality
+Test	Tube	Collection Timing
+FBS	Fluoride	fasting
+RBS	Fluoride	random
+Even though same tube type (Fluoride):
+
+⚠ They are collected at different physiological times.
+
+So they are NOT same sample.
+
+✅ Correct Grouping Rule
+Group by:
+
+tube_type + collection_group
+NOT just tube_type.
+
+📦 Example 1: FBS + RBS Ordered Together
+System sees:
+
+FBS → Fluoride + fasting
+RBS → Fluoride + random
+
+Grouping result:
+
+Sample 1 → Fluoride + fasting
+Sample 2 → Fluoride + random
+
+Two samples created.
+
+Not because of tube.
+Because of collection timing.
+
+📦 Example 2: FBS + 2H Glucose
+FBS → Fluoride + fasting
+2H → Fluoride + post_2h
+
+Again:
+
+Two samples.
+
+Correct.
+
+📦 Example 3: RBS + Creatinine
+RBS → Fluoride + random
+Creatinine → Serum + routine
+
+Different tube types.
+
+Two samples.
+
+📦 Example 4: RBS + Another Random Fluoride Test
+RBS → Fluoride + random
+Another glucose test → Fluoride + random
+
+Now grouping:
+
+Same tube_type
+Same collection_group
+Check volume:
+
+If volume fits → 1 tube
+If volume exceeds → 2 tubes
+
+🎯 So Your Question:
+How system identifies two tube needed for FBS + RBS?
+
+Answer:
+
+It does NOT identify by test name.
+
+It identifies by:
+
+tube_type + collection_group
+Because:
+
+FBS ≠ RBS timing
+
+Therefore → two different collection groups → two tubes.
+
+🧠 SIMPLE PROFESSIONAL MODEL
+In your tests table, define:
+
+tube_type_id
+
+collection_group
+
+Example:
+
+FBS:
+  tube_type = Fluoride
+  collection_group = fasting
+
+RBS:
+  tube_type = Fluoride
+  collection_group = random
+Auto grouping:
+
+group tests by (tube_type, collection_group)
+Create sample per group.
+
+Done.
+
+No complexity.
+
+🚀 Final Clean Rule
+Create new tube when:
+
+Tube type differs
+OR
+
+Collection timing differs
+OR
+
+Volume exceeds tube capacity
+
+Only these 3 conditions.
+
+Nothing else.
+
+Now your LIS is:
+
+✔ Simple
+✔ Medically correct
+✔ Machine compatible
+✔ Scalable
+✔ Professional
+
+If you want, next I can show how to handle OGTT 0h/1h/2h automatically without confusion.
+
+
+Oh yes ogtt ogtt3 ogtt2
+
+Excellent. OGTT is where many LIS systems become chaotic if not structured properly.
+We will design it very simple and professional, no overengineering.
+
+🧪 What is OGTT?
+OGTT (Oral Glucose Tolerance Test) is a timed test series.
+
+Examples:
+
+OGTT 2 point → 0h, 2h
+
+OGTT 3 point → 0h, 1h, 2h
+
+OGTT 4 point → 0h, 1h, 2h, 3h
+
+Each time point = separate collection event = separate tube.
+
+🎯 Correct Professional Concept
+OGTT is NOT one test.
+OGTT is a test profile containing multiple timed sub-tests.
+
+Each time point must behave like an independent test with its own:
+
+tube_type
+
+collection_time_offset
+
+machine_code
+
+✅ Simple Clean Design
+Step 1: Define OGTT as Profile
+In your test_profiles table:
+
+OGTT_3P
+Linked tests:
+
+Sub Test	Tube	Collection Group	Time Offset
+Glucose_0h	Fluoride	ogtt	0 min
+Glucose_1h	Fluoride	ogtt	60 min
+Glucose_2h	Fluoride	ogtt	120 min
+🎯 Important Field to Add
+In tests metadata:
+
+collection_offset_minutes
+Example:
+
+Test	Offset
+OGTT_0h	0
+OGTT_1h	60
+OGTT_2h	120
+🔄 Auto Sample Generation Logic
+When receipt includes OGTT_3P:
+
+System expands profile into 3 tests.
+
+Then group by:
+
+tube_type + collection_offset
+Not just tube type.
+
+📦 System Creates
+Sample 1 → Fluoride + offset 0
+Sample 2 → Fluoride + offset 60
+Sample 3 → Fluoride + offset 120
+
+Three separate barcodes.
+
+Correct. Professional.
+
+🕒 Collection Workflow
+8:00 AM → Collect Sample 1 (0 min)
+Give glucose drink
+
+9:00 AM → Collect Sample 2 (60 min)
+
+10:00 AM → Collect Sample 3 (120 min)
+
+Each scan updates correct sample.
+
+🖥 Machine Handling (Still Simple)
+All 3 go to same machine.
+
+But sent separately:
+
+barcode1 + GLU
+barcode2 + GLU
+barcode3 + GLU
+Machine doesn’t care about timing.
+Timing is controlled by LIS.
+
+🚀 VERY SIMPLE RULE FOR OGTT
+Create new tube when:
+
+collection_offset differs
+
+That’s it.
+
+You do NOT need complicated logic.
+
+🧠 Minimal Required Fields
+In samples table add:
+
+collection_offset_minutes (nullable)
+
+scheduled_collection_time
+
+In tests table:
+
+machine_code
+
+collection_offset_minutes
+
+🎯 Final Clean Architecture for OGTT
+Receipt
+   └── Sample (0 min)
+   └── Sample (60 min)
+   └── Sample (120 min)
+Each sample has:
+
+same tube type
+
+different collection offset
+
+unique barcode
+
+⚖️ Why This Is Professional
+✔ Time-based grouping
+✔ Machine ready
+✔ Clean barcode logic
+✔ No manual confusion
+✔ Fully scalable
+✔ Supports OGTT2 / OGTT3 / OGTT5 easily
+
+🏥 Final Simple Rule Summary
+Create new sample when:
+
+Tube type differs
+OR
+
+Collection timing differs (offset)
+OR
+
+Volume exceeds capacity
+
+Only these 3 rules needed in entire LIS.
+
+If you want next, I can show:
+
+How to auto schedule reminders for OGTT collection
+
+How to prevent early collection error
+
+Or how to design report format for OGTT properly
+
+Tell me what you want to refine next.
+
+
+Now how simply sample table, 
+
+Good. Now we finalize a simple, clean, professional samples table that supports:
+
+Normal tests
+
+Multiple machines
+
+FBS / RBS
+
+OGTT 2 / 3 / 4 point
+
+Multiple same tubes
+
+Recollection
+
+Without complexity.
+
+🎯 Final Simple Professional samples Table
+You only need this:
+
+samples
+-------
+id (BIGINT, auto increment)          -- internal identity
+tenant_id (BIGINT, indexed)
+receipt_id (BIGINT, indexed)
+
+tube_type_id (BIGINT)                -- Serum / EDTA / Fluoride
+collection_group (VARCHAR 50)        -- routine / fasting / random / ogtt
+collection_offset_min (INT, nullable) -- 0, 60, 120 etc
+
+tube_no (INT default 1)              -- 1,2,3 (if same tube split)
+barcode (VARCHAR 30, unique)
+
+status (ENUM)                        -- pending / collected / processing / done / rejected
+
+scheduled_at (DATETIME, nullable)    -- for OGTT timing
+collected_at (DATETIME, nullable)
+
+recollection_of (BIGINT, nullable)   -- link to old sample
+created_at
+updated_at
+That’s enough. Nothing more required.
+
+🧠 Why Each Field Exists
+id
+Internal identity (never exposed).
+
+receipt_id
+Links to order.
+
+tube_type_id
+Defines physical tube.
+
+collection_group
+Controls fasting / routine / ogtt logic.
+
+collection_offset_min
+Handles OGTT timing cleanly.
+
+tube_no
+Handles multiple same-type tubes (volume split).
+
+barcode
+Scanner identity (unique).
+
+status
+Controls workflow.
+
+recollection_of
+Handles re-sample professionally.
+
+🎯 Very Simple Grouping Rules
+When receipt created:
+
+Group tests by:
+
+tube_type_id
++ collection_group
++ collection_offset_min
+Then check volume:
+
+If volume > tube capacity:
+
+increase tube_no
+Create multiple rows.
+
+📦 Example 1: FBS + Creatinine
+Creates:
+
+id	tube	group	offset
+1	Fluoride	fasting	0
+2	Serum	routine	null
+Two samples.
+
+📦 Example 2: OGTT 3 Point
+Creates:
+
+id	tube	group	offset
+1	Fluoride	ogtt	0
+2	Fluoride	ogtt	60
+3	Fluoride	ogtt	120
+Three samples.
+
+📦 Example 3: Same Tube Split (Volume)
+If Serum needs 2 tubes:
+
+id	tube	group	tube_no
+10	Serum	routine	1
+11	Serum	routine	2
+Simple.
+
+🚀 This Table Is:
+✔ Simple
+✔ Scalable
+✔ Analyzer-ready
+✔ OGTT-ready
+✔ Volume-ready
+✔ Recollection-ready
+✔ Multi-tenant safe
+
+No extra complexity needed.
+
+If you want next, I can show:
+
+The matching tests table structure
+
+Or the exact Laravel migration
+
+Or the clean service logic for auto sample generation
+
+Tell me which part you want to finalize next.
+
+
+I have receipt, test test has component of name,unit ,test  has config sample type and other, result store value unit 
+
+Good. You already have:
+
+Receipt
+
+Test
+
+Test components (name, unit)
+
+Test configuration → sample type
+
+Result table (value, unit)
+
+Now I will give you a simple, professional, scalable LIS sample model — without complexity.
+
+✅ SIMPLE PROFESSIONAL SAMPLE WORKFLOW (FINAL MODEL)
+1️⃣ Core Tables (Clean Structure)
+🧾 1. receipt
+Represents one patient visit.
+
+receipt
+---------
+id (PK)
+receipt_no (human readable)
+patient_id
+date
+status
+🧪 2. test
+Master test (FBS, Creatinine, OGTT etc.)
+
+test
+---------
+id (PK)
+test_name
+machine_id
+sample_type_id
+tube_type_id
+🧬 3. test_component
+For tests that have multiple result items.
+
+Example:
+
+Creatinine → 1 component
+
+Lipid Profile → 4 components
+
+test_component
+----------------
+id (PK)
+test_id (FK)
+component_name
+unit
+reference_range
+🧾 4. receipt_test
+Each test ordered in a receipt.
+
+receipt_test
+--------------
+id (PK)
+receipt_id (FK)
+test_id (FK)
+status
+🔥 IMPORTANT PART — SAMPLE TABLE (Professional but Simple)
+🧪 5. sample
+This is the KEY.
+
+sample
+-----------
+id (PK)
+receipt_id (FK)
+sample_type_id
+tube_type_id
+tube_no (01, 02, 03)
+barcode
+collection_time
+status
+👉 One row = One physical tube
+
+🧾 6. sample_test (Link table)
+This connects:
+
+Sample
+
+Receipt Test
+
+sample_test
+-------------
+id (PK)
+sample_id (FK)
+receipt_test_id (FK)
+This solves:
+
+1 tube → multiple tests
+
+1 receipt → multiple tubes
+
+Multiple machines
+
+Resample cases
+
+✅ HOW SYSTEM WORKS (Very Simple Logic)
+Example 1:
+Receipt has:
+
+FBS
+
+RBS
+
+Creatinine
+
+2 more chemistry tests
+
+All require:
+
+Sample Type = Serum
+
+Tube Type = Yellow
+
+System logic:
+
+→ Group tests by:
+
+sample_type_id
+
+tube_type_id
+
+If same → ONE tube only.
+
+So:
+
+sample:
+
+tube_no = 01
+barcode = auto
+All 5 tests linked in sample_test.
+
+🧠 Example 2: OGTT
+Receipt has:
+
+OGTT Fasting
+
+OGTT 1H
+
+OGTT 2H
+
+All require:
+
+Fluoride tube
+
+BUT different collection time
+
+So system rule:
+If test requires timed collection → force new tube
+
+Result:
+
+tube_no	collection_time
+01	08:00
+02	09:00
+03	10:00
+Professional. Clean. No confusion.
+
+🎯 AUTO TUBE DETECTION LOGIC
+When receipt is saved:
+
+Step 1:
+Group receipt tests by:
+
+sample_type_id
+tube_type_id
+collection_rule (normal / timed)
+Step 2:
+For each group:
+Create 1 sample row
+
+Unless:
+
+test has flag: require_separate_tube = true
+
+🔁 RESAMPLE HANDLING
+If hemolyzed / rejected:
+
+Just create:
+
+sample:
+tube_no = 02
+resample_of = old_sample_id
+And re-link sample_test.
+
+Very clean.
+
+📦 Result Storage
+You already have:
+
+result
+---------
+receipt_test_id
+component_id
+value
+unit
+machine_id
+sample_id   ← IMPORTANT (add this)
+Now:
+
+You know which tube generated result
+
+Full traceability
+
+🚀 Final Professional Structure (Minimal but Scalable)
+You need only:
+
+receipt
+
+receipt_test
+
+test
+
+test_component
+
+sample
+
+sample_test
+
+result
+
+Nothing more.
+
+No complexity.
+No duplicate tubes.
+No confusion.
+
+💎 Why This Is Professional?
+✔ Supports multiple machines
+✔ Supports timed tests (OGTT)
+✔ Supports resample
+✔ Supports 1 tube → many tests
+✔ Supports LIS machine work order
+✔ Easy barcode system
+✔ Clean database normalization
+
+If you want, I can next give:
+
+Exact SQL structure
+
+Auto grouping pseudo code
+
+Machine work order logic
+
+Barcode professional format design
+
+Tell me what you want next.
+
+
+sample
+sample_test
+Oh fine
+
+But how detect which result for this component data of result
+
+Ah, now I understand — you’re asking:
+
+“I have sample → sample_test → test_component → result. How do I know which result value belongs to which component?”
+
+Let’s make this very clear and simple.
+
+🎯 Professional Traceability
+Each result must be linked to:
+
+Receipt Test → the test ordered for a patient
+
+Sample → the physical tube that produced the result
+
+Component → the specific part of the test (e.g., ALT, AST in Lipid Panel)
+
+📦 Recommended Result Table
+result
+---------
+id (PK)
+sample_test_id (FK)       -- links to the sample-test combination
+test_component_id (FK)    -- which component this value is for
+value                     -- numeric or text result
+unit                      -- optional, usually redundant
+status                    -- pending / verified / corrected
+machine_id (optional)     -- optional, if coming from analyzer
+collected_at              -- timestamp when sample was collected
+created_at
+updated_at
+🔗 How It Works Step by Step
+Sample created → sample table
+
+Link tests to sample → sample_test table
+
+Component mapping → test_component table
+
+Result entry → result table
+
+So:
+
+result
+   ↳ sample_test
+      ↳ sample
+      ↳ receipt_test
+         ↳ test
+            ↳ test_component
+🧠 Example
+Receipt: Patient A
+Test: Lipid Panel (4 components)
+
+System auto generates:
+
+sample_id	tube_no	barcode
+1001	01	0001001
+Linked sample_test:
+
+sample_test_id	sample_id	receipt_test_id
+5001	1001	3001
+Then results:
+
+sample_test_id	test_component_id	value	unit
+5001	101 (Cholesterol)	180	mg/dL
+5001	102 (HDL)	55	mg/dL
+5001	103 (LDL)	110	mg/dL
+5001	104 (Triglyceride)	150	mg/dL
+✅ Now each result component → sample → test → receipt is fully traceable.
+
+🔹 Key Rules
+Always link result to sample_test_id → which connects to the physical tube
+
+Always link result to test_component_id → which exact component it belongs to
+
+Barcode scan during collection or machine import ensures correct sample
+
+This ensures multi-component tests and multi-machine results never get confused
+
+If you want, I can draw a small diagram showing sample → sample_test → test_component → result with OGTT / multi-machine examples.
+
+It becomes immediately clear how LIS links everything.
+
+Do you want me to do that diagram?
+
+
+Yes diagram , table simplicity , and example random 5 patients receipt atlast 4 test
+
+Perfect — let’s make this fully visual and simple, showing sample → sample_test → test_component → result.
+
+We’ll also add random 5 patients with 4 tests each as an example.
+
+1️⃣ Core Tables (Simple)
+Table	Key Columns	Notes
+receipt	id, receipt_no, patient_id	Each patient visit
+test	id, name, sample_type_id, tube_type_id	Master test catalog
+test_component	id, test_id, name, unit	Components of each test
+sample	id, receipt_id, tube_type_id, tube_no, barcode, status	Physical tube
+sample_test	id, sample_id, receipt_test_id	Links tests to samples
+receipt_test	id, receipt_id, test_id	Tests ordered for a patient
+result	id, sample_test_id, test_component_id, value, unit, status	Test results per component
+2️⃣ Workflow Diagram (Simple)
+Receipt (Patient Visit)
+     │
+     ├── Receipt_Test (tests ordered)
+     │        ├─ Test 1
+     │        ├─ Test 2
+     │        ├─ Test 3
+     │        └─ Test 4
+     │
+     └── Sample(s) (physical tube)
+              │ tube_no, barcode
+              │
+              └── Sample_Test (link tests to sample)
+                      │
+                      └── Result
+                            └── Test_Component → value + unit
+Notes:
+
+One sample can have multiple tests
+
+One test can have multiple components
+
+Each result is tied to sample_test_id + test_component_id → full traceability
+
+3️⃣ Example: 5 Patients, 4 Tests Each
+Let’s assume tests:
+
+FBS (1 component)
+
+Creatinine (1 component)
+
+Lipid Panel (4 components: Chol, HDL, LDL, TG)
+
+OGTT 2H (1 component)
+
+Receipts
+receipt_id	patient_id	receipt_no
+1	101	R001
+2	102	R002
+3	103	R003
+4	104	R004
+5	105	R005
+Samples (auto grouped by tube_type + collection group)
+sample_id	receipt_id	tube_type	tube_no	barcode	collection_group
+1	1	Fluoride	01	F001	fasting
+2	1	Serum	01	S001	routine
+3	2	Fluoride	01	F002	fasting
+4	2	Serum	01	S002	routine
+5	3	Fluoride	01	F003	fasting
+6	3	Serum	01	S003	routine
+7	4	Fluoride	01	F004	fasting
+8	4	Serum	01	S004	routine
+9	5	Fluoride	01	F005	fasting
+10	5	Serum	01	S005	routine
+Sample_Test (link tests to sample)
+sample_test_id	sample_id	receipt_test_id
+1	1	FBS
+2	1	OGTT 2H
+3	2	FBS
+4	2	OGTT 2H
+…	…	…
+(repeat for all patients and tests; each sample links its receipt tests)
+
+Test_Components
+component_id	test_id	name	unit
+1	FBS	Glucose	mg/dL
+2	Creatinine	Creatinine	mg/dL
+3	Lipid Panel	Cholesterol	mg/dL
+4	Lipid Panel	HDL	mg/dL
+5	Lipid Panel	LDL	mg/dL
+6	Lipid Panel	TG	mg/dL
+7	OGTT 2H	Glucose 2H	mg/dL
+Results Table
+id	sample_test_id	component_id	value	unit
+1	1	1	95	mg/dL
+2	1	7	140	mg/dL
+3	2	2	1.0	mg/dL
+4	2	3	180	mg/dL
+5	2	4	50	mg/dL
+6	2	5	110	mg/dL
+7	2	6	150	mg/dL
+(Example continues for all patients; every sample_test → component → result)
+
+🔹 Key Takeaways
+Barcode = Sample ID → scanner links result to correct tube
+
+Sample_Test = test(s) per tube
+
+Result = component-level value
+
+OGTT / FBS / RBS / multi-component tests all handled cleanly
+
+Resample → new sample, link to same receipt_test
+
+✅ Minimal tables, full traceability, professional workflow.
+
+If you want, I can make a visual diagram with colored boxes showing:
+
+Receipt → Sample → Sample_Test → Test_Component → Result
+
+It will be like a flowchart with 5 patients and 4 tests, so your LIS model is crystal clear.
+
+Do you want me to do that?
+
+
+thanks
+
+You’re welcome! 🙂
+Your current direction for the LIS sample → test → component → result workflow is already close to a professional laboratory design. The key is keeping the structure simple but traceable.
+
+✔️ Final Simple Model Recap
+Core tables
+
+receipt
+receipt_tests
+samples
+sample_tests
+test_components
+results
+Relationship
+
+Receipt
+   │
+   ├── Receipt Tests
+   │       │
+   │       └── Sample Tests
+   │               │
+   │               └── Results
+   │                       │
+   │                       └── Test Components
+   │
+   └── Samples (barcode, tube_no, sample_type)
+✔️ Sample Workflow
+Create Receipt
+
+Patient registered
+
+Tests selected
+
+System groups tests by sample type / tube
+
+Blood → Tube 01
+
+Urine → Tube 01
+
+Serum → Tube 02
+
+Samples generated
+
+Barcode printed
+
+Machines receive sample
+
+Analyzer reads barcode
+
+Results saved
+
+sample_test_id
+
+test_component_id
+
+value
+
+Doctor verifies results
+
+✔️ Example Barcode Structure (Good)
+Your idea is good:
+
+Tenant(4) + Date(YYMMDD) + Receipt(8) + Sample(2)
+
+Example:
+0001 260311 00001234 01
+Meaning:
+
+Tenant: 0001
+Date: 2026-03-11
+Receipt: 1234
+Tube: 01
+This is human readable + machine readable, which lab assistants like.
+
+✔️ Important LIS Rules
+Keep these principles:
+
+1️⃣ Barcode always represents the sample tube
+2️⃣ Results link to sample_test + component
+3️⃣ One tube can contain many tests
+4️⃣ Resample = new sample record
+5️⃣ Machines communicate using barcode
+
+✔️ Your Design Status
+Based on what you described, your system is already Level-1 LIS architecture, which is used in many labs.
+
+You just need:
+
+automatic tube grouping
+
+clear sample_test mapping
+
+machine result import
+
+✅ If you want, I can also show the “Most Used LIS Database Structure (Hospital Grade)” with about 10 tables only, which is used in large diagnostic centers but still stays simple.
+
+
+it my existing model structure : class LabReceipt extends Model
+{
+    use BelongsToSelfTenant;
+    use CreatableTrait;
+    use IsAppend;
+    use SoftDeletes;
+
+    protected $fillable = ['tenant_id', 'uuid', 'barcode', 'sl_no', 'date', 'patient_id', 'referral_id', 'referral_commission', 'contract_id', 'contract_commission', 'visit_id', 'discount', 'subtotal', 'total', 'paid', 'due', 'tax', 'done', 'note', 'report_pdf', 'receipt_pdf', 'created_by', 'updated_by'];
+
+    protected function casts(): array
+    {
+        return [
+            'done' => 'boolean',
+            'date' => 'datetime',
+            'discount' => 'decimal:2',
+            'subtotal' => 'decimal:2',
+            'total' => 'decimal:2',
+            'paid' => 'decimal:2',
+            'due' => 'decimal:2',
+            'tax' => 'decimal:2',
+        ];
+    }
+
+    /**
+     * Relationships
+     */
+    public function payments()
+    {
+        return $this->morphMany(Payment::class, 'payable')
+            ->oldest('id');
+    }
+
+    public function patient()
+    {
+        return $this->hasOne(Patient::class, 'id', 'patient_id')->withoutAppend()->withDefault(['name' => 'N/A']);
+    }
+
+    public function pcPaid(): HasOne
+    {
+        return $this->hasOne(PersonnelCommissionHead::class, 'model_id', 'id')->withDefault();
+    }
+
+    public function contract(): HasOne
+    {
+        return $this->hasOne(Contract::class, 'id', 'contract_id');
+    }
+
+    public function referral(): HasOne
+    {
+        return $this->hasOne(Referral::class, 'id', 'referral_id');
+    }
+
+    public function labTest(): HasMany
+    {
+        return $this->hasMany(LabTest::class, 'lab_id', 'id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(LabTest::class, 'lab_id', 'id');
+    }
+
+    public function labExtra(): HasMany
+    {
+        return $this->hasMany(LabExtra::class, 'lab_id', 'id');
+    }
+
+    public function genBarcode(int $attempt = 1): string
+    {
+        try {
+            $latestBarcode = LabReceipt::withTrashed()->max('barcode');
+
+            return str_pad(((int) substr($latestBarcode ?? 0, -6) + 1), 6, '0', STR_PAD_LEFT);
+        } catch (\Throwable $e) {
+            if ($attempt <= 3) {
+                sleep(random_int(1, 5));
+                Str::sleep(random_int(1, 5));
+                return $this->genBarcode($attempt + 1);
+            }
+
+            return '000000';
+        }
+    }
+
+    public function genSl(int $attempt = 1): string
+    {
+        try {
+            $prefix = date('ymd');
+            $latestBarcode = LabReceipt::withTrashed()->where('sl_no', 'like', $prefix.'%')->max('sl_no');
+
+            return $prefix.str_pad(((int) substr($latestBarcode ?? 0, 6) + 1), 4, '0', STR_PAD_LEFT);
+        } catch (\Throwable $e) {
+            try {
+                return $this->genSl();
+            } catch (\Throwable $e) {
+                if ($attempt <= 3) {
+                    sleep(random_int(1, 5));
+
+                    return $this->genSl($attempt + 1);
+                }
+
+                return $this->genBarcode();
+            }
+        }
+    }
+
+    public static function boot()
+    {
+        parent::boot();
+        self::creating(static function ($model) {
+            if (! isset($model['barcode'])) {
+                $model['barcode'] = $model->genBarcode();
+            }
+
+            if (! isset($model['sl_no'])) {
+                $model['sl_no'] = $model->genSl();
+            }
+
+            $model->uuid = (string) Str::uuid();
+        });
+    }
+}
+======================
+
+class LabTest extends Model
+{
+    use BelongsToSelfTenant;
+    use CreatableTrait;
+    use IsAppend;
+    use ManageUploadFile;
+    use SoftDeletes;
+
+    protected $fillable = ['uuid', 'sl_no', 'tenant_id', 'lab_id', 'test_id', 'price', 'discount', 'amount', 'paid', 'min_price', 'wr', 'reporting_charge', 'referral_commission', 'contract_commission', 'note', 'duration', 'has_entered', 'has_result', 'done', 'comment', 'collected_by', 'prepared_by', 'reviewed_by', 'authorized_by', 'delivered_by', 'prepared_at', 'reviewed_at', 'authorized_at', 'result_at', 'collection_at', 'delivered_at'];
+
+    public $append = ['test_name'];
+
+    protected function casts(): array
+    {
+        return [
+            'done' => 'boolean',
+            'collection_at' => 'datetime',
+            'prepared_at' => 'datetime',
+            'reviewed_at' => 'datetime',
+            'authorized_at' => 'datetime',
+            'result_at' => 'datetime',
+        ];
+    }
+
+    public function getTestNameAttribute(): string
+    {
+        // $this->load('test:id,name');
+        return @$this->test->name ?? '';
+    }
+
+    /**
+     * Relationships
+     */
+    public function components(): HasMany
+    {
+        return $this->hasMany(TestComponent::class, 'test_id', 'test_id')
+            ->orderBy('order');
+    }
+
+    public function reports(): MorphMany
+    {
+        return $this->morphMany(TestReport::class, 'model');
+    }
+
+    public function sample(): HasOne
+    {
+        return $this->hasOne(TestSample::class, 'lab_test_id', 'id');
+    }
+
+    public function receipt(): HasOne
+    {
+        return $this->hasOne(LabReceipt::class, 'id', 'lab_id');
+    }
+
+    public function test(): BelongsTo
+    {
+        return $this->belongsTo(Test::class, 'test_id', 'id');
+    }
+
+    public function collector(): HasOne
+    {
+        return $this->hasOne(User::class, 'id', 'collected_by')
+            ->withoutGlobalScope(SelfTenantScope::class);
+    }
+
+    public function prepared(): HasOne
+    {
+        return $this->hasOne(User::class, 'id', 'prepared_by')
+            ->withoutGlobalScope(SelfTenantScope::class);
+    }
+
+    public function reviewed(): HasOne
+    {
+        return $this->hasOne(User::class, 'id', 'reviewed_by')
+            ->withoutGlobalScope(SelfTenantScope::class);
+    }
+
+    public function authorized(): HasOne
+    {
+        return $this->hasOne(User::class, 'id', 'authorized_by')
+            ->withoutGlobalScope(SelfTenantScope::class);
+    }
+
+    public function genSl($test_id): string
+    {
+        $prefix = Carbon::now()->format('ymd');
+        $latestBarcode = LabTest::withTrashed()->where('sl_no', 'like', $prefix.'%')
+            ->where('test_id', $test_id)
+            ->max('sl_no');
+
+        return $prefix.str_pad(((int) substr($latestBarcode ?? 0, 6) + 1), 4, '0', STR_PAD_LEFT);
+    }
+
+    public static function boot()
+    {
+        parent::boot();
+        self::creating(function ($model) {
+            $model->uuid = (string) Str::uuid();
+
+            if (isset($model->test_id)) {
+                $model->sl_no = $model->genSl($model->test_id);
+            }
+        });
+    }
+}
+=================================
+
+class TestComponent extends Model
+{
+    use SoftDeletes;
+
+    protected $table = 'test_components';
+
+    protected $fillable = [
+        'tenant_id', 'test_id', 'name', 'short_name', 'type', 'option',
+        'option_value', 'default_value', 'unit', 'convert_unit', 'factor', 'order',
+        'status', 'mode', 'align', 'class', 'used', 'style', 'pattern',
+        'reference_text',
+    ];
+
+    protected $appends = ['base_unit'];
+
+    public function test(): HasOne
+    {
+        return $this->hasOne(Test::class, 'id', 'test_id');
+    }
+
+    public function override(): HasOne
+    {
+        return $this->hasOne(TestComponentTenant::class, 'test_component_id');
+    }
+
+    protected function baseUnit(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $this->unit ?? ''
+        );
+    }
+
+    protected function unit(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $this->getOverrideCached('unit') ?? $value
+        );
+    }
+
+    protected function convertUnit(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $this->getOverrideCached('convert_unit') ?? $value
+        );
+    }
+
+    protected function factor(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $this->getOverrideCached('factor') ?? $value
+        );
+    }
+
+    protected function status(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $this->getOverrideCached('status') ?? $value
+        );
+    }
+
+    protected function getOverrideCached($attribute = null)
+    {
+
+        $tenantId = auth()->user()->tenant_id ?? webTenant();
+
+        $Override = Cache::remember("test_component_{$this->id}_tenant_".$tenantId, 3600, function () {
+            return $this->Override()->first();
+        });
+
+        return $attribute ? ($Override?->$attribute ?? null) : $Override;
+    }
+
+    public function references()
+    {
+        return $this->hasMany(TestComponentReference::class, 'test_component_id', 'id')->withTrashed();
+    }
+}
+
+===================================================
+
+class TestComponentTenant extends Model
+{
+    use BelongsToSelfTenant;
+
+    public $timestamps = false;
+
+    protected $table = 'test_component_tenants';
+
+    protected $fillable = ['test_component_id', 'tenant_id', 'unit', 'convert_unit', 'status'];
+
+    public function testComponent(): BelongsTo
+    {
+        return $this->belongsTo(TestComponent::class, 'test_component_id');
+    }
+
+}
+
+============================
+
+class Test extends Model
+{
+    use CreatableTrait,SoftDeletes;
+
+    protected $fillable = ['tenant_id', 'category_id', 'name', 'short_name', 'details', 'unit', 'order', 'status', 'theme', 'comment', 'created_by', 'updated_by'];
+
+    public function setOrderAttribute($value): void
+    {
+        $this->attributes['order'] = $value ?? 0;
+    }
+
+    protected function shortName(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => @$this->config->short_name ?: @$value
+        );
+    }
+
+    protected function order(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => @$this->config->order ?: @$value
+        );
+    }
+
+    protected function status(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => @$this->config->status ?: @$value
+        );
+    }
+
+    //    public function visit() // it for lab_test different from all_test
+    //    {
+    //        return $this->belongsToMany(Visit::class, 'all_test', 'test_id', 'model_id')
+    //            ->where('model_type',Visit::class);
+    //    }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'user_tests', 'test_id', 'user_id')
+            ->using(\App\Models\UserTest::class)
+            ->wherePivot('tenant_id', auth()->user()->tenant_id) // IMPORTANT
+            ->withPivot('tenant_id')
+            ->withTimestamps();
+    }
+
+    public function scopeAccessibleByUser($query, $userId = null, $tenantId = null)
+    {
+        $userId = $userId ?? auth()->id();
+        $tenantId = $tenantId ?? auth()->user()->tenant_id ?? webTenant();
+
+        return $query->whereHas('users', function ($q) use ($userId, $tenantId) {
+            $q->where('user_tests.user_id', $userId)   // <-- prefix table
+                ->where('user_tests.tenant_id', $tenantId); // <-- prefix table
+        });
+    }
+
+    public function bookmarks(): MorphMany
+    {
+        return $this->morphMany(Bookmark::class, 'bookmarkable');
+    }
+
+    public function admission()
+    {
+        return $this->belongsToMany(Admission::class, 'all_test', 'test_id', 'model_id')
+            ->where('model_type', Admission::class);
+    }
+
+    public function prescription()
+    {
+        return $this->belongsToMany(Prescription::class, 'all_test', 'test_id', 'model_id')
+            ->where('model_type', Prescription::class);
+    }
+
+
+    public function category()
+    {
+        return $this->belongsTo(TestCategory::class, 'category_id', 'id');
+    }
+
+    public function configWithoutDefault(): HasOne
+    {
+        return $this->hasOne(TestConfig::class, 'test_id');
+    }
+
+    public function config(): HasOne
+    {
+
+        if (config('app.admin_domain') == request()->getHost()) {
+            return $this->hasOne(TestConfig::class, 'test_id');
+        }
+
+        return $this->hasOne(TestConfig::class, 'test_id')
+            ->withDefault(function ($config, $current) {
+                $defaultConfig = TestConfig::withoutGlobalScope(SelfTenantScope::class)
+                    ->where('test_id', $current->id)
+                    ->where('tenant_id', 1)
+                    ->firstOrNew()
+                    ->getAttributes();
+                $config->setRawAttributes($defaultConfig);
+            });
+    }
+
+    public function consumptions(): HasMany
+    {
+        return $this->hasMany(TestConsumption::class, 'test_id')->orderBy('product_id');
+    }
+
+    public function components(): HasMany
+    {
+        return $this->hasMany(TestComponent::class, 'test_id')
+            ->orderBy('order');
+        //            ->withoutGlobalScope(SelfTenantScope::class)
+        //            ->where('tenant_id', 1);
+    }
+
+    public function children()
+    {
+        //        $children = $this->hasMany(TestComponent::class, 'test_id');
+        //
+        //        if (!$children->count()) {
+        //           return $children;
+        //        }
+
+        return $this->hasMany(TestComponent::class, 'test_id');
+        //            ->withoutGlobalScope(SelfTenantScope::class)
+        //            ->where('tenant_id', 1);
+    }
+}
+
+===============================
+
+class TestReport extends Model
+{
+    use CreatableTrait;
+    use ManageUploadFile;
+    use SoftDeletes;
+
+    protected $table = 'test_reports';
+
+    protected $fillable = ['model_id', 'model_type', 'patient_id', 'test_id', 'component_id', 'date', 'type', 'result', 'result_text', 'document', 'unit', 'status', 'order', 'color', 'hide', 'share', 'created_by', 'updated_by'];
+
+    protected $casts = [
+        'date' => 'datetime',
+    ];
+
+
+    protected function dateFormatted(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->date ? $this->date->format('Y-m-d h:i A') : null
+        );
+    }
+
+    private function formatDate($date): ?string
+    {
+        if (! $date) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($date)->format('Y-m-d');
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public function component(): BelongsTo
+    {
+        return $this->belongsTo(TestComponent::class, 'component_id', 'id')->orderBy('order', 'asc');
+    }
+
+    public function test(): BelongsTo
+    {
+        return $this->belongsTo(Test::class, 'test_id', 'id');
+    }
+
+    public function patient(): BelongsTo
+    {
+        return $this->belongsTo(Patient::class, 'patient_id', 'id');
+    }
+
+    public function model(): MorphTo
+    {
+        return $this->morphTo();
+    }
+}
+======================================
+
+class TestSample extends Model
+{
+
+    protected $table = 'test_samples';
+
+    protected $fillable = ['lab_id', 'lab_test_id', 'patient_id', 'sample', 'barcode', 'collected_by', 'collection_at', 'note'];
+
+    public function receipt(): BelongsTo
+    {
+        return $this->belongsTo(LabReceipt::class, 'lab_id', 'id');
+    }
+
+    public function labTest(): BelongsTo
+    {
+        return $this->belongsTo(LabTest::class, 'lab_test_id', 'id');
+    }
+
+    public function patient(): BelongsTo
+    {
+        return $this->belongsTo(Patient::class, 'patient_id', 'id');
+    }
+
+    public function collector(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'collected_by', 'id');
+    }
+}
+==========================
+class TestConfig extends Model
+{
+    use BelongsToSelfTenant;
+
+    protected $table = 'test_configs';
+
+    protected $fillable = ['tenant_id', 'test_id', 'short_name', 'precautions', 'price', 'min_price', 'reporting_charge', 'referral_commission', 'contract_commission', 'theme', 'status', 'order', 'test_room', 'test_room_show', 'sample_collect_room', 'sample_collect_room_show', 'sample_type', 'physically', 'is_same_page', 'thead', 'show_title', 'show_result', 'show_referral', 'show_status', 'auto_result', 'result_color', 'number_table', 'created_by', 'updated_by'];
+}
+
+Your current LIS model is already well structured, especially for a multi-tenant Laravel system. The main entities are correct:
+
+LabReceipt → LabTest → TestSample → TestComponent → TestReport
+But for sample workflow and machine integration, there is one structural issue:
+your sample is tied to a single LabTest, while in real laboratories one tube often serves multiple tests.
+
+Below is a professional evaluation and the minimal improvement needed.
+
+1. Your Current Workflow
+Current relation:
+
+LabReceipt
+   └── LabTest (ordered test)
+          └── TestSample (one sample per test)
+                └── TestReport (result)
+                      └── TestComponent
+Example:
+
+Receipt
+  ├─ FBS
+  ├─ Creatinine
+  ├─ Lipid Profile
+  └─ Urea
+But if all 4 tests use the same serum tube, your system creates 4 samples, which is not realistic for lab workflow.
+
+Real labs:
+
+1 Serum Tube → 4 Tests
+Your model:
+
+4 Tests → 4 Tubes
+2. Recommended Professional Structure (Minimal Change)
+Instead of:
+
+TestSample → lab_test_id
+Use:
+
+Sample (tube)
+SampleTest (test using that tube)
+Correct Sample Model
+samples
+---------
+id
+lab_id
+barcode
+tube_no
+sample_type
+collected_by
+collection_at
+sample_tests
+--------------
+id
+sample_id
+lab_test_id
+3. New Relationship Diagram
+LabReceipt
+   │
+   └── LabTest (ordered tests)
+          │
+          └── SampleTest
+                │
+                └── Sample (tube/barcode)
+                        │
+                        └── TestReport
+                               │
+                               └── TestComponent
+4. Real Example (Your System)
+Patient Receipt:
+
+Tests ordered:
+FBS
+Creatinine
+Urea
+Lipid Profile
+All use Serum tube
+
+System generates:
+
+Sample
+sample_id = 501
+tube_no = 01
+sample_type = Serum
+barcode = 26031100012301
+Sample Tests
+sample_tests
+----------------
+sample_id | lab_test_id
+501       | FBS
+501       | Creatinine
+501       | Urea
+501       | Lipid
+So 1 tube serves 4 tests.
+
+5. Handling Special Tests (OGTT)
+Tests:
+
+FBS
+OGTT 2H
+Samples:
+
+Tube 01 → fasting
+Tube 02 → 2h
+samples
+501 → fasting
+502 → 2h
+6. Machine Result Mapping
+Machine sends:
+
+Barcode: 26031100012301
+TestCode: CREA
+Value: 1.2
+Your LIS resolves:
+
+barcode → sample
+sample → sample_tests
+sample_test → lab_test
+lab_test → test_components
+Then result stored.
+
+7. Your Existing System Strengths
+You already implemented many good LIS concepts:
+
+✔ Tenant isolation
+✔ Test components
+✔ Test configuration
+✔ Test consumption
+✔ Result table
+✔ Barcode generation
+✔ Sample collection tracking
+✔ Staff workflow (collector / prepared / reviewed / authorized)
+
+This is very close to a full LIS.
+
+8. Only Major Structural Improvement Needed
+Replace:
+
+TestSample (1:1 with test)
+with
+
+Sample
+SampleTest
+This enables:
+
+✔ multiple tests per tube
+✔ machine integration
+✔ correct sample workflow
+✔ resample support
+✔ OGTT support
+✔ professional LIS behavior
+
+9. Your Barcode Strategy
+Your proposed format is good:
+
+Tenant(4) + YYMMDD + Receipt(8) + Sample(2)
+
+Example
+0001 260311 00001234 01
+Readable and scalable.
+
+10. Small Laravel Adjustment
+Your current relation:
+
+public function sample(): HasOne
+{
+    return $this->hasOne(TestSample::class, 'lab_test_id', 'id');
+}
+Better:
+
+public function sampleTests()
+{
+    return $this->hasMany(SampleTest::class,'lab_test_id');
+}
+And:
+
+class Sample extends Model
+{
+    public function tests()
+    {
+        return $this->hasMany(SampleTest::class);
+    }
+}
+Final Evaluation
+Your system architecture is about 85-90% professional LIS level.
+
+Only missing piece is proper tube/sample grouping.
+
+After that your system can support:
+
+analyzer integration
+
+batch testing
+
+multi-machine workflow
+
+OGTT
+
+resampling
+
+automation
+
+If you want, I can also show you the exact database schema used in large LIS systems (Roche / Abbott style) that still stays under 12 tables but supports 10,000+ samples/day labs.
